@@ -29,30 +29,78 @@ package smile.clustering.linkage;
  * @author Haifeng Li
  */
 public abstract class Linkage {
-    /**
-     * The proximity matrix to store the pair-wise distance measure as
-     * dissimilarity between clusters. To save space, we only need the
-     * lower half of matrix. During the clustering, this matrix will be
-     * updated to reflect the dissimilarity of merged clusters.
-     */
-    double[][] proximity;
+    /** The data size. */
+    int size;
 
     /**
-     * Returns the proximity matrix.
+     * Linearized proximity matrix to store the pair-wise distance measure
+     * as dissimilarity between clusters. To save space, we only need the
+     * lower half of matrix. And we use float instead of double to save
+     * more space, which also help speed performance. During the
+     * clustering, this matrix will be updated to reflect the dissimilarity
+     * of merged clusters.
      */
-    public double[][] getProximity() {
-        return proximity;
+    float[] proximity;
+
+    /** Initialize the linkage with the lower triangular proximity matrix. */
+    public Linkage(double[][] proximity) {
+        size = proximity.length;
+        this.proximity = new float[size * (size+1) / 2];
+
+        // row wise
+        /*
+        for (int i = 0, k = 0; i < size; i++) {
+            double[] pi = proximity[i];
+            for (int j = 0; j <= i; j++, k++) {
+                this.proximity[k] = (float) pi[j];
+            }
+        }
+        */
+
+        // column wise
+        for (int j = 0, k = 0; j < size; j++) {
+            for (int i = j; i < size; i++, k++) {
+                this.proximity[k] = (float) proximity[i][j];
+            }
+        }
+    }
+
+    /**
+     * Initialize the linkage with the lower triangular proximity matrix.
+     * @param size the data size.
+     * @param proximity column-wise linearized proximity matrix that stores
+     *                  only the lower half. The length of proximity should be
+     *                  size * (size+1) / 2;
+     *                  To save space, Linkage will use this argument directly
+     *                  without copy. The elements may be modified.
+     */
+    public Linkage(int size, float[] proximity) {
+        if (proximity.length != size * (size+1) / 2) {
+            throw new IllegalArgumentException(String.format("The length of proximity is %d, expected %d", proximity.length, size * (size+1) / 2));
+        }
+
+        this.size = size;
+        this.proximity = proximity;
+    }
+
+    int index(int i, int j) {
+        // row wise
+        // return i > j ? i*(i+1)/2 + j : j*(j+1)/2 + i;
+        // column wise
+        return i > j ? proximity.length - (size-j)*(size-j+1)/2 + i - j : proximity.length - (size-i)*(size-i+1)/2 + j - i;
+    }
+
+    /** Returns the proximity matrix size. */
+    public int size() {
+        return size;
     }
 
     /**
      * Returns the distance/dissimilarity between two clusters/objects, which
      * are indexed by integers.
      */
-    double d(int i, int j) {
-        if (i > j)
-            return proximity[i][j];
-        else
-            return proximity[j][i];
+    public float d(int i, int j) {
+        return proximity[index(i, j)];
     }
 
     /**

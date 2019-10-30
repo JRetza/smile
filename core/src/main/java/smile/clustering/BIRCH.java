@@ -55,7 +55,7 @@ import smile.math.Math;
  * 
  * @author Haifeng Li
  */
-public class BIRCH implements Clustering<double[]>, Serializable {
+public class BIRCH implements Clustering<double[]> {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -82,7 +82,8 @@ public class BIRCH implements Clustering<double[]>, Serializable {
     /**
      * Internal node of CF tree.
      */
-    class Node {
+    class Node implements Serializable {
+        private static final long serialVersionUID = 1L;
 
         /**
          * The number of observations
@@ -430,8 +431,23 @@ public class BIRCH implements Clustering<double[]>, Serializable {
             HierarchicalClustering hc = new HierarchicalClustering(linkage);
 
             int[] y = hc.partition(k);
+
+            // recalculate the centroids of each cluster
+            centroids = new double[k][d];
+            int[] nc = new int[k];
             for (int i = 0; i < n; i++) {
-                leaves.get(i).y = y[i];
+                Leaf leaf = leaves.get(i);
+                int yi = y[i];
+                leaf.y = yi;
+                nc[yi] += leaf.n;
+                for (int j = 0; j < d; j++) {
+                    centroids[yi][j] += leaf.sum[j];
+                }
+            }
+            for (int i = 0; i < k; i++) {
+                for (int j = 0; j < d; j++) {
+                    centroids[i][j] /= nc[i];
+                }
             }
         } else {
             for (int i = 0; i < n; i++) {

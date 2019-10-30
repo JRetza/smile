@@ -16,7 +16,6 @@
 
 package smile.classification;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import smile.math.Math;
 import smile.math.matrix.Matrix;
@@ -50,13 +49,18 @@ import smile.projection.Projection;
  * the number of samples. In this case, the covariance estimates do not have
  * full rank, and so cannot be inverted. This is known as small sample size
  * problem.
- * 
+ *
+ * <h2>References</h2>
+ * <ol>
+ * <li> Robust and Accurate Cancer Classification with Gene Expression Profiling http://alumni.cs.ucr.edu/~hli/paper/hli05tumor.pdf.</li>
+ * </ol>
+ *
  * @see LDA
  * @see smile.projection.PCA
  * 
  * @author Haifeng Li
  */
-public class FLD implements Classifier<double[]>, Projection<double[]>, Serializable {
+public class FLD implements Classifier<double[]>, Projection<double[]> {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -188,7 +192,7 @@ public class FLD implements Classifier<double[]>, Projection<double[]>, Serializ
             }
             
             if (i > 0 && labels[i] - labels[i-1] > 1) {
-                throw new IllegalArgumentException("Missing class: " + labels[i]+1);                 
+                throw new IllegalArgumentException("Missing class: " + (labels[i-1]+1));
             }
         }
 

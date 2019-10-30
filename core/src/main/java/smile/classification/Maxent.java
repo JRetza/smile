@@ -16,7 +16,6 @@
 
 package smile.classification;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -51,7 +50,7 @@ import smile.util.MulticoreExecutor;
  * 
  * @author Haifeng Li
  */
-public class Maxent implements SoftClassifier<int[]>, Serializable {
+public class Maxent implements SoftClassifier<int[]> {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LoggerFactory.getLogger(Maxent.class);
 
@@ -227,7 +226,7 @@ public class Maxent implements SoftClassifier<int[]>, Serializable {
             }
             
             if (i > 0 && labels[i] - labels[i-1] > 1) {
-                throw new IllegalArgumentException("Missing class: " + labels[i]+1);                 
+                throw new IllegalArgumentException("Missing class: " + (labels[i-1]+1));
             }
         }
 
@@ -373,12 +372,13 @@ public class Maxent implements SoftClassifier<int[]>, Serializable {
                 
                 int start = 0;
                 int end = step;
-                for (int i = 0; i < m - 1; i++) {
+                for (int i = 0; i < m - 1 && start < n; i++) {
+                    if (end > n) end = n;
                     tasks.add(new FTask(w, start, end));
                     start += step;
                     end += step;
                 }
-                tasks.add(new FTask(w, start, n));
+                if (start < n) tasks.add(new FTask(w, start, n));
                 
                 try {
                     for (double fi : MulticoreExecutor.run(tasks)) {
@@ -476,12 +476,13 @@ public class Maxent implements SoftClassifier<int[]>, Serializable {
                 
                 int start = 0;
                 int end = step;
-                for (int i = 0; i < m - 1; i++) {
+                for (int i = 0; i < m - 1 && start < n; i++) {
+                    if (end > n) end = n;
                     tasks.add(new GTask(w, start, end));
                     start += step;
                     end += step;
                 }
-                tasks.add(new GTask(w, start, n));
+                if (start < n) tasks.add(new GTask(w, start, n));
 
                 try {
                     for (double[] gi : MulticoreExecutor.run(tasks)) {
@@ -637,12 +638,13 @@ public class Maxent implements SoftClassifier<int[]>, Serializable {
 
                 int start = 0;
                 int end = step;
-                for (int i = 0; i < m - 1; i++) {
+                for (int i = 0; i < m - 1 && start < n; i++) {
+                    if (end > n) end = n;
                     tasks.add(new FTask(w, start, end));
                     start += step;
                     end += step;
                 }
-                tasks.add(new FTask(w, start, n));
+                if (start < n) tasks.add(new FTask(w, start, n));
                 
                 try {
                     for (double fi : MulticoreExecutor.run(tasks)) {
@@ -769,12 +771,13 @@ public class Maxent implements SoftClassifier<int[]>, Serializable {
                 
                 int start = 0;
                 int end = step;
-                for (int i = 0; i < m - 1; i++) {
+                for (int i = 0; i < m - 1 && start < n; i++) {
+                    if (end > n) end = n;
                     tasks.add(new GTask(w, start, end));
                     start += step;
                     end += step;
                 }
-                tasks.add(new GTask(w, start, n));
+                if (start < n) tasks.add(new GTask(w, start, n));
 
                 try {
                     for (double[] gi : MulticoreExecutor.run(tasks)) {

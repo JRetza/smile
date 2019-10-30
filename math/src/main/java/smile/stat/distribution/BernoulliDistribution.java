@@ -29,6 +29,7 @@ import smile.math.Math;
  * @author Haifeng Li
  */
 public class BernoulliDistribution extends DiscreteDistribution {
+    private static final long serialVersionUID = 1L;
 
     /**
      * Probability of success.
@@ -63,16 +64,16 @@ public class BernoulliDistribution extends DiscreteDistribution {
      * @param data data[i] == 1 if the i-<i>th</i> trail is success. Otherwise 0.
      */
     public BernoulliDistribution(int[] data) {
-        double k = 0.0;
+        int k = 0;
         for (int i : data) {
             if (i == 1) {
                 k++;
             } else if (i != 0) {
-                throw new IllegalArgumentException("Invalid value " + data[i]);
+                throw new IllegalArgumentException("Invalid value " + i);
             }
         }
 
-        p = k / data.length;
+        p = (double) k / data.length;
         q = 1 - p;
 
         entropy = -p * Math.log2(p) - q * Math.log2(q);
@@ -84,14 +85,14 @@ public class BernoulliDistribution extends DiscreteDistribution {
      * @param data the boolean array to indicate if the i-<i>th</i> trail success.
      */
     public BernoulliDistribution(boolean[] data) {
-        double k = 0.0;
+        int k = 0;
         for (boolean b : data) {
             if (b) {
                 k++;
             }
         }
 
-        p = k / data.length;
+        p = (double) k / data.length;
         q = 1 - p;
 
         entropy = -p * Math.log2(p) - q * Math.log2(q);

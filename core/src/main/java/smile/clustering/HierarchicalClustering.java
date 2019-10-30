@@ -16,7 +16,6 @@
 
 package smile.clustering;
 
-import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.Queue;
 import smile.clustering.linkage.Linkage;
@@ -52,7 +51,7 @@ import smile.sort.IntHeapSelect;
  * 
  * @author Haifeng Li
  */
-public class HierarchicalClustering implements Serializable {
+public class HierarchicalClustering {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -77,8 +76,7 @@ public class HierarchicalClustering implements Serializable {
      * includes the proximity matrix of data.
      */
     public HierarchicalClustering(Linkage linkage) {
-        double[][] proximity = linkage.getProximity();
-        int n = proximity.length;
+        int n = linkage.size();
 
         merge = new int[n - 1][2];
         int[] id = new int[n];
@@ -90,7 +88,7 @@ public class HierarchicalClustering implements Serializable {
             id[i] = i;
         }
 
-        FastPair fp = new FastPair(points, proximity);
+        FastPair fp = new FastPair(points, linkage);
         for (int i = 0; i < n - 1; i++) {
             height[i] = fp.getNearestPair(merge[i]);
             linkage.merge(merge[i][0], merge[i][1]);     // merge clusters into one

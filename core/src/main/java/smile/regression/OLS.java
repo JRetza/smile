@@ -16,10 +16,11 @@
 
 package smile.regression;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import smile.data.Attribute;
+import smile.data.AttributeDataset;
 import smile.math.Math;
 import smile.math.matrix.Matrix;
 import smile.math.matrix.DenseMatrix;
@@ -75,7 +76,7 @@ import smile.math.special.Beta;
  * 
  * @author Haifeng Li
  */
-public class OLS implements Regression<double[]>, Serializable {
+public class OLS implements Regression<double[]> {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LoggerFactory.getLogger(OLS.class);
 
@@ -92,9 +93,17 @@ public class OLS implements Regression<double[]>, Serializable {
      */
     private double[] w;
     /**
+     * The variable attributes.
+     */
+    private Attribute[] attributes;
+    /**
      * The coefficients, their standard errors, t-scores, and p-values.
      */
     private double[][] coefficients;
+    /**
+     * The fitted values.
+     */
+    private double[] fittedValues;
     /**
      * The residuals, that is response minus fitted values.
      */
@@ -172,9 +181,29 @@ public class OLS implements Regression<double[]>, Serializable {
      * @param x a matrix containing the explanatory variables. NO NEED to include a constant column of 1s for bias.
      * @param y the response values.
      * @param SVD If true, use SVD to fit the model. Otherwise, use QR decomposition. SVD is slower than QR but
-     *            can handle rand-deficient matrix.
+     *            can handle rank-deficient matrix.
      */
     public OLS(double[][] x, double[] y, boolean SVD) {
+        this(new AttributeDataset("OLS", x, y), SVD);
+    }
+
+    /**
+     * Constructor. Learn the ordinary least squares model.
+     * @param data the dataset containing the explanatory and response variables and their attributes. NO NEED to include a constant column of 1s for bias.
+     */
+    public OLS(AttributeDataset data) {
+        this(data, false);
+    }
+
+    /**
+     * Constructor. Learn the ordinary least squares model.
+     * @param data the dataset containing the explanatory and response variables and their attributes. NO NEED to include a constant column of 1s for bias.
+     * @param SVD If true, use SVD to fit the model. Otherwise, use QR decomposition. SVD is slower than QR but
+     *            can handle rank-deficient matrix.
+     */
+    public OLS(AttributeDataset data, boolean SVD) {
+        double[][] x = data.x();
+        double[] y = data.y();
         if (x.length != y.length) {
             throw new IllegalArgumentException(String.format("The sizes of X and Y don't match: %d != %d", x.length, y.length));
         }
@@ -184,6 +213,11 @@ public class OLS implements Regression<double[]>, Serializable {
         
         if (n <= p) {
             throw new IllegalArgumentException(String.format("The input matrix is not over determined: %d rows, %d columns", n, p));
+        }
+
+        attributes = data.attributes();
+        if (attributes.length != p) {
+            throw new IllegalArgumentException(String.format("There are %d variables, but %d variable attributes", attributes.length, p));
         }
 
         // weights and intercept
@@ -208,7 +242,7 @@ public class OLS implements Regression<double[]>, Serializable {
                 logger.warn("Matrix is not of full rank, try SVD instead");
                 SVD = true;
                 svd = X.svd();
-                Arrays.fill(w1, 0.0);
+                Arrays.fill(w1, 0.0);//re-init w1 with zero after exception caught
                 svd.solve(y, w1);
             }
         }
@@ -223,9 +257,11 @@ public class OLS implements Regression<double[]>, Serializable {
         double TSS = 0.0;
         RSS = 0.0;
         double ybar = Math.mean(y);
+        fittedValues = new double[n];
         residuals = new double[n];
         for (int i = 0; i < n; i++) {
-            double r = y[i] - yhat[i] - b;
+            fittedValues[i] = yhat[i] + b;
+            double r = y[i] - fittedValues[i];
             residuals[i] = r;
             RSS += Math.sqr(r);
             TSS += Math.sqr(y[i] - ybar);
@@ -248,7 +284,7 @@ public class OLS implements Regression<double[]>, Serializable {
                 coefficients[i][0] = w1[i];
                 double s = svd.getSingularValues()[i];
                 if (!Math.isZero(s, 1E-10)) {
-                    double se = error / svd.getSingularValues()[i];
+                    double se = error / s;
                     coefficients[i][1] = se;
                     double t = w1[i] / se;
                     coefficients[i][2] = t;
@@ -305,6 +341,13 @@ public class OLS implements Regression<double[]>, Serializable {
      */
     public double[] residuals() {
         return residuals;
+    }
+
+    /**
+     * Returns the fitted values.
+     */
+    public double[] fittedValues() {
+        return fittedValues;
     }
 
     /**
@@ -408,7 +451,7 @@ public class OLS implements Regression<double[]>, Serializable {
         builder.append("            Estimate        Std. Error        t value        Pr(>|t|)\n");
         builder.append(String.format("Intercept%11.4f%18.4f%15.4f%16.4f %s%n", coefficients[p][0], coefficients[p][1], coefficients[p][2], coefficients[p][3], significance(coefficients[p][3])));
         for (int i = 0; i < p; i++) {
-            builder.append(String.format("Var %d\t %11.4f%18.4f%15.4f%16.4f %s%n", i+1, coefficients[i][0], coefficients[i][1], coefficients[i][2], coefficients[i][3], significance(coefficients[i][3])));
+            builder.append(String.format("%s\t %11.4f%18.4f%15.4f%16.4f %s%n", attributes[i].getName(), coefficients[i][0], coefficients[i][1], coefficients[i][2], coefficients[i][3], significance(coefficients[i][3])));
         }
 
         builder.append("---------------------------------------------------------------------\n");

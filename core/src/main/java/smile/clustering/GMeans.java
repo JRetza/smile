@@ -15,7 +15,6 @@
  *******************************************************************************/
 package smile.clustering;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import org.slf4j.Logger;
@@ -42,7 +41,7 @@ import smile.stat.distribution.GaussianDistribution;
  * 
  * @author Haifeng Li
  */
-public class GMeans extends KMeans implements Serializable {
+public class GMeans extends KMeans {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LoggerFactory.getLogger(GMeans.class);
 
@@ -123,7 +122,7 @@ public class GMeans extends KMeans implements Serializable {
 
             int[] index = QuickSort.sort(score);
             for (int i = 0; i < k; i++) {
-                if (score[index[i]] <= 1.8692) {
+                if (score[i] <= 1.8692) {
                     centers.add(centroids[index[i]]);
                 }
             }

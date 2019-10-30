@@ -15,10 +15,9 @@
  *******************************************************************************/
 package smile.classification;
 
-import java.io.Serializable;
 import java.util.Arrays;
-
 import smile.data.Attribute;
+import smile.data.AttributeDataset;
 import smile.data.NumericAttribute;
 import smile.math.Math;
 import smile.regression.RegressionTree;
@@ -99,7 +98,7 @@ import smile.validation.ClassificationMeasure;
  * 
  * @author Haifeng Li
  */
-public class GradientTreeBoost implements SoftClassifier<double[]>, Serializable {
+public class GradientTreeBoost implements SoftClassifier<double[]> {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -283,6 +282,16 @@ public class GradientTreeBoost implements SoftClassifier<double[]>, Serializable
 
     /**
      * Constructor. Learns a gradient tree boosting for classification.
+     *
+     * @param data the dataset.
+     * @param ntrees the number of iterations (trees).
+     */
+    public GradientTreeBoost(AttributeDataset data, int ntrees) {
+        this(data.attributes(), data.x(), data.labels(), ntrees);
+    }
+
+    /**
+     * Constructor. Learns a gradient tree boosting for classification.
      * 
      * @param attributes the attribute properties.
      * @param x the training instances. 
@@ -292,7 +301,20 @@ public class GradientTreeBoost implements SoftClassifier<double[]>, Serializable
     public GradientTreeBoost(Attribute[] attributes, double[][] x, int[] y, int ntrees) {
         this(attributes, x, y, ntrees, 6, x.length < 2000 ? 0.005 : 0.05, 0.7);
     }
-    
+
+    /**
+     * Constructor. Learns a gradient tree boosting for classification.
+     *
+     * @param data the dataset.
+     * @param ntrees the number of iterations (trees).
+     * @param maxNodes the number of leaves in each tree.
+     * @param shrinkage the shrinkage parameter in (0, 1] controls the learning rate of procedure.
+     * @param subsample the sampling fraction for stochastic tree boosting.
+     */
+    public GradientTreeBoost(AttributeDataset data, int ntrees, int maxNodes, double shrinkage, double subsample) {
+        this(data.attributes(), data.x(), data.labels(), ntrees, maxNodes, shrinkage, subsample);
+    }
+
     /**
      * Constructor. Learns a gradient tree boosting for classification.
      *

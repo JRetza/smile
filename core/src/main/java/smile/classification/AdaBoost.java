@@ -15,12 +15,12 @@
  *******************************************************************************/
 
 package smile.classification;
-import java.io.Serializable;
-import java.util.Arrays;
 
+import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import smile.data.Attribute;
+import smile.data.AttributeDataset;
 import smile.data.NumericAttribute;
 import smile.math.Math;
 import smile.util.SmileUtils;
@@ -58,7 +58,7 @@ import smile.validation.ClassificationMeasure;
  * 
  * @author Haifeng Li
  */
-public class AdaBoost implements SoftClassifier<double[]>, Serializable {
+public class AdaBoost implements SoftClassifier<double[]> {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LoggerFactory.getLogger(AdaBoost.class);
     private static final String INVALID_NUMBER_OF_TREES = "Invalid number of trees: ";
@@ -204,6 +204,28 @@ public class AdaBoost implements SoftClassifier<double[]>, Serializable {
     public AdaBoost(Attribute[] attributes, double[][] x, int[] y, int ntrees) {
         this(attributes, x, y, ntrees, 2);
     }
+
+    /**
+     * Constructor. Learns AdaBoost with decision stumps.
+     *
+     * @param data the dataset
+     * @param ntrees the number of trees.
+     */
+    public AdaBoost(AttributeDataset data, int ntrees) {
+        this(data.attributes(), data.x(), data.labels(), ntrees);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param data the dataset
+     * @param ntrees the number of trees.
+     * @param maxNodes the maximum number of leaf nodes in the trees.
+     */
+    public AdaBoost(AttributeDataset data, int ntrees, int maxNodes) {
+        this(data.attributes(), data.x(), data.labels(), ntrees, maxNodes);
+    }
+
     /**
      * Constructor.
      *
@@ -236,7 +258,7 @@ public class AdaBoost implements SoftClassifier<double[]>, Serializable {
             }
             
             if (i > 0 && labels[i] - labels[i-1] > 1) {
-                throw new IllegalArgumentException("Missing class: " + labels[i]+1);                 
+                throw new IllegalArgumentException("Missing class: " + (labels[i-1]+1));
             }
         }
         

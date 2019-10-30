@@ -20,10 +20,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import smile.math.DoubleArrayList;
 import smile.math.Math;
 import smile.math.SparseArray;
@@ -87,7 +85,7 @@ import smile.util.MulticoreExecutor;
  * 
  * @author Haifeng Li
  */
-public class SVM <T> implements OnlineClassifier<T>, SoftClassifier<T>, Serializable {
+public class SVM <T> implements OnlineClassifier<T>, SoftClassifier<T> {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LoggerFactory.getLogger(SVM.class);
 
@@ -862,10 +860,19 @@ public class SVM <T> implements OnlineClassifier<T>, SoftClassifier<T>, Serializ
          * @param epsgr the tolerance of convergence test.
          */
         void finish(double epsgr) {
-            logger.info("SVM finializes the training by reprocess.");
-            for (int count = 1; smo(null, null, epsgr); count++) {
+            finish(epsgr, Integer.MAX_VALUE);
+        }
+
+        /**
+         * Call reprocess until converge.
+         * @param epsgr the tolerance of convergence test.
+         * @param maxIter the maximum number of iterations.
+         */
+        void finish(double epsgr, int maxIter) {
+            logger.info("SVM is finalizing the training by reprocess.");
+            for (int count = 1; smo(null, null, epsgr) && count <= maxIter; count++) {
                 if (count % 1000 == 0) {
-                    logger.info("finishing {} reprocess iterations.");
+                    logger.info("finishing {} reprocess iterations.", count);
                 }
             }
             logger.info("SVM finished the reprocess.");

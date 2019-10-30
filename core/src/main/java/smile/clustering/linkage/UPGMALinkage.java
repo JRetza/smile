@@ -41,10 +41,27 @@ public class UPGMALinkage extends Linkage {
      * dissimilarity. To save space, we only need the lower half of matrix.
      */
     public UPGMALinkage(double[][] proximity) {
-        this.proximity = proximity;
-        n = new int[proximity.length];
-        for (int i = 0; i < n.length; i++)
+        super(proximity);
+        init();
+    }
+
+    /**
+     * Constructor.
+     * @param size the data size.
+     * @param proximity column-wise linearized proximity matrix that stores
+     *                  only the lower half without diagonal elements.
+     */
+    public UPGMALinkage(int size, float[] proximity) {
+        super(size, proximity);
+        init();
+    }
+
+    /** Initialize sample size. */
+    private void init() {
+        n = new int[size];
+        for (int i = 0; i < size; i++) {
             n[i] = 1;
+        }
     }
 
     @Override
@@ -54,14 +71,14 @@ public class UPGMALinkage extends Linkage {
 
     @Override
     public void merge(int i, int j) {
-        double sum = n[i] + n[j];
+        float sum = n[i] + n[j];
 
         for (int k = 0; k < i; k++) {
-            proximity[i][k] = proximity[i][k] * n[i] / sum + d(j, k) * n[j] / sum;
+            proximity[index(i, k)] = d(i, k) * n[i] / sum + d(j, k) * n[j] / sum;
         }
 
-        for (int k = i+1; k < proximity.length; k++) {
-            proximity[k][i] = proximity[k][i] * n[i] / sum + d(j, k) * n[j] / sum;
+        for (int k = i+1; k < size; k++) {
+            proximity[index(k, i)] = d(k, i) * n[i] / sum + d(j, k) * n[j] / sum;
         }
 
         n[i] += n[j];

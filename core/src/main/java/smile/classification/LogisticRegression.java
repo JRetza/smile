@@ -16,7 +16,6 @@
 
 package smile.classification;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,6 +23,7 @@ import java.util.concurrent.Callable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import smile.math.Math;
+import smile.data.AttributeDataset;
 import smile.math.DifferentiableMultivariateFunction;
 import smile.util.MulticoreExecutor;
 
@@ -75,7 +75,7 @@ import smile.util.MulticoreExecutor;
  * 
  * @author Haifeng Li
  */
-public class LogisticRegression implements SoftClassifier<double[]>, Serializable {
+public class LogisticRegression implements SoftClassifier<double[]>, OnlineClassifier<double[]> {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LoggerFactory.getLogger(LogisticRegression.class);
 
@@ -103,6 +103,16 @@ public class LogisticRegression implements SoftClassifier<double[]>, Serializabl
      * The linear weights for multi-class logistic regression.
      */
     private double[][] W;
+    
+    /**
+     * Regularization factor.
+     */
+    private double lambda;
+    
+    /**
+     * learning rate for stochastic gradient descent.
+     */
+    private double eta = 5e-5;
 
     /**
      * Trainer for logistic regression.
@@ -180,11 +190,32 @@ public class LogisticRegression implements SoftClassifier<double[]>, Serializabl
     /**
      * Constructor. No regularization.
      * 
+     * @param data labels in [0, k) where k is the number of classes and training samples.
+     */
+    public LogisticRegression(AttributeDataset data) {
+        this(data.x(), data.labels());
+    }
+
+    /**
+     * Constructor. No regularization.
+     * 
      * @param x training samples.
      * @param y training labels in [0, k), where k is the number of classes.
      */
     public LogisticRegression(double[][] x, int[] y) {
         this(x, y, 0.0);
+    }
+
+    /**
+     * Constructor. No regularization.
+     * 
+     * @param data labels in [0, k) where k is the number of classes and training samples.
+     * @param lambda &lambda; &gt; 0 gives a "regularized" estimate of linear
+     * weights which often has superior generalization performance, especially
+     * when the dimensionality is high.
+     */
+    public LogisticRegression(AttributeDataset data,  double lambda) {
+        this(data.x(), data.labels(), lambda);
     }
 
     /**
@@ -198,6 +229,20 @@ public class LogisticRegression implements SoftClassifier<double[]>, Serializabl
      */
     public LogisticRegression(double[][] x, int[] y, double lambda) {
         this(x, y, lambda, 1E-5, 500);
+    }
+
+    /**
+     * Constructor. No regularization.
+     * 
+     * @param data labels in [0, k) where k is the number of classes and training samples.
+     * @param lambda &lambda; &gt; 0 gives a "regularized" estimate of linear
+     * weights which often has superior generalization performance, especially
+     * when the dimensionality is high.
+     * @param tol the tolerance for stopping iterations.
+     * @param maxIter the maximum number of iterations.
+     */
+    public LogisticRegression(AttributeDataset data,  double lambda, double tol, int maxIter) {
+        this(data.x(), data.labels(), lambda, tol, maxIter);
     }
 
     /**
@@ -219,6 +264,7 @@ public class LogisticRegression implements SoftClassifier<double[]>, Serializabl
         if (lambda < 0.0) {
             throw new IllegalArgumentException("Invalid regularization factor: " + lambda);
         }
+        this.lambda = lambda;
 
         if (tol <= 0.0) {
             throw new IllegalArgumentException("Invalid tolerance: " + tol);            
@@ -238,7 +284,7 @@ public class LogisticRegression implements SoftClassifier<double[]>, Serializabl
             }
             
             if (i > 0 && labels[i] - labels[i-1] > 1) {
-                throw new IllegalArgumentException("Missing class: " + labels[i]+1);                 
+                throw new IllegalArgumentException("Missing class: " + (labels[i-1]+1));
             }
         }
 
@@ -343,14 +389,19 @@ public class LogisticRegression implements SoftClassifier<double[]>, Serializabl
 
                 int start = 0;
                 int end = step;
-                for (int i = 0; i < m - 1; i++) {
+                for (int i = 0; i < m - 1 && start < n; i++) {
+                    if (end > n) {
+                        end = n;
+                    }
                     ftasks.add(new FTask(start, end));
                     gtasks.add(new GTask(start, end));
                     start += step;
                     end += step;
                 }
-                ftasks.add(new FTask(start, n));
-                gtasks.add(new GTask(start, n));
+                if (start < n) {
+                    ftasks.add(new FTask(start, n));
+                    gtasks.add(new GTask(start, n));
+                }
             }
         }
 
@@ -596,14 +647,19 @@ public class LogisticRegression implements SoftClassifier<double[]>, Serializabl
 
                 int start = 0;
                 int end = step;
-                for (int i = 0; i < m - 1; i++) {
+                for (int i = 0; i < m - 1 && start < n; i++) {
+                    if (end > n) {
+                        end = n;
+                    }
                     ftasks.add(new FTask(start, end));
                     gtasks.add(new GTask(start, end));
                     start += step;
                     end += step;
                 }
-                ftasks.add(new FTask(start, n));
-                gtasks.add(new GTask(start, n));
+                if (start < n) {
+                    ftasks.add(new FTask(start, n));
+                    gtasks.add(new GTask(start, n));
+                }
             }
         }
 
@@ -822,6 +878,63 @@ public class LogisticRegression implements SoftClassifier<double[]>, Serializabl
             return f;
         }
     }
+
+	@Override
+	public void learn(double[] x, int y) {
+        if (y < 0 || y >= k) {
+            throw new IllegalArgumentException("Invalid label");
+        }
+
+        if (x.length != p) {
+            throw new IllegalArgumentException("Invalid input vector size: " + x.length);
+        }
+
+        if (k == 2) {
+            // calculate gradient for incoming data
+            double wx = dot(x, w);
+            double res = y - Math.logistic(wx);
+
+            // update the weights
+            for (int j = 0; j <= p; j++) {
+                double gj = j < p ? eta * res * x[j] : eta * res;
+                w[j] += gj;
+
+                // add regularization part
+                if (lambda != 0.0) {
+                    w[j] -= 2 * lambda * eta * w[j];
+                }
+            }
+        } else {
+            double[] prob = new double[k];
+            for (int j = 0; j < k; j++) {
+                prob[j] = dot(x, W[j]);
+            }
+
+            softmax(prob);
+
+            // update the weights
+            for (int j = 0; j < k; j++) {
+                for (int l = 0; l <= p; l++) {
+                    double yi = (y == j ? 1.0 : 0.0) - prob[j];
+                    double gjl = l < p ? eta * yi * x[l] : eta * yi;
+                    W[j][l] += gjl;
+
+                    // add regularization part
+                    if (lambda != 0.0) {
+                        W[j][l] -= 2 * lambda * eta * W[j][l];
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Tune the fixed learning rate for stochastic gradient descent
+     * @param eta usually quite small to avoid oscillation, default is 5e-5
+     */
+    public void setLearningRate(double eta) {
+        this.eta = eta;
+	}
 
     /**
      * Calculate softmax function without overflow.

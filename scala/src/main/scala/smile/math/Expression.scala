@@ -16,20 +16,17 @@
 
 package smile.math
 
+import com.typesafe.scalalogging.LazyLogging
 import smile.math.matrix.{Matrix, DenseMatrix}
-import smile.util.Logging
 
 /**
  * Vector Expression.
  */
-sealed trait VectorExpression extends Traversable[Double] {
+sealed trait VectorExpression {
   def length: Int
   def apply(i: Int): Double
   def toArray: Array[Double]
   override def toString = runtime.ScalaRunTime.stringOf(toArray)
-  override def foreach[U](p: (Double) => U): Unit = {
-    for (i <- 0 until length) p(apply(i))
-  }
 
   def + (b: VectorExpression) = {
     if (length != b.length) throw new IllegalArgumentException(s"Vector sizes don't match: ${length} + ${b.length}")
@@ -617,7 +614,7 @@ case class MatrixDivMatrix(A: MatrixExpression, B: MatrixExpression) extends Mat
  * matrix multiplication chain is not associative.
  * @param dims Matrix A[i] has dimension dims[i-1] x dims[i] for i = 1..n
  */
-class MatrixOrderOptimization(dims: Array[Int]) extends Logging {
+class MatrixOrderOptimization(dims: Array[Int]) extends LazyLogging {
   val n = dims.length - 1
 
   // m[i,j] = Minimum number of scalar multiplications (i.e., cost)

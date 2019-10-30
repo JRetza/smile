@@ -23,6 +23,7 @@ import java.util.concurrent.Callable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import smile.data.Attribute;
+import smile.data.AttributeDataset;
 import smile.data.NumericAttribute;
 import smile.math.Math;
 import smile.util.MulticoreExecutor;
@@ -70,7 +71,7 @@ import smile.validation.ClassificationMeasure;
  * 
  * @author Haifeng Li
  */
-public class RandomForest implements SoftClassifier<double[]>, Serializable {
+public class RandomForest implements SoftClassifier<double[]> {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LoggerFactory.getLogger(RandomForest.class);
 
@@ -147,16 +148,22 @@ public class RandomForest implements SoftClassifier<double[]>, Serializable {
         /**
          * Default constructor of 500 trees.
          */
-        public Trainer() {
+        private Trainer() {
 
         }
 
         /**
          * Constructor.
-         * 
+         *
+         * @param mtry the number of random selected features to be used to determine
          * @param ntrees the number of trees.
          */
-        public Trainer(int ntrees) {
+        public Trainer(int mtry, int ntrees) {
+            if (mtry < 1) {
+                throw new IllegalArgumentException("Invalid number of random selected features for splitting: " + mtry);
+            }
+
+            this.mtry = mtry;
             if (ntrees < 1) {
                 throw new IllegalArgumentException("Invalid number of trees: " + ntrees);
             }
@@ -172,7 +179,7 @@ public class RandomForest implements SoftClassifier<double[]>, Serializable {
          */
         public Trainer(Attribute[] attributes, int ntrees) {
             super(attributes);
-
+            this.mtry = (int) Math.floor(Math.sqrt(attributes.length));
             if (ntrees < 1) {
                 throw new IllegalArgumentException("Invalid number of trees: " + ntrees);
             }
@@ -452,6 +459,17 @@ public class RandomForest implements SoftClassifier<double[]>, Serializable {
     /**
      * Constructor. Learns a random forest for classification.
      *
+     * @param data the dataset
+     * @param ntrees the number of trees.
+     * generally good performance, where dim is the number of variables.
+     */
+    public RandomForest(AttributeDataset data, int ntrees) {
+        this(data.attributes(), data.x(), data.labels(), ntrees);
+    }
+    
+    /**
+     * Constructor. Learns a random forest for classification.
+     *
      * @param attributes the attribute properties.
      * @param x the training instances.
      * @param y the response variable.
@@ -463,6 +481,19 @@ public class RandomForest implements SoftClassifier<double[]>, Serializable {
     public RandomForest(Attribute[] attributes, double[][] x, int[] y, int ntrees, int mtry) {
         this(attributes, x, y, ntrees, 100, 5, mtry, 1.0);
 
+    }
+
+    /**
+     * Constructor. Learns a random forest for classification.
+     *
+     * @param data the dataset
+     * @param ntrees the number of trees.
+     * @param mtry the number of random selected features to be used to determine
+     * the decision at a node of the tree. floor(sqrt(dim)) seems to give
+     * generally good performance, where dim is the number of variables.
+     */
+    public RandomForest(AttributeDataset data, int ntrees, int mtry) {
+        this(data.attributes(), data.x(), data.labels(), ntrees, mtry);
     }
 
     /**
@@ -487,6 +518,24 @@ public class RandomForest implements SoftClassifier<double[]>, Serializable {
     /**
      * Constructor. Learns a random forest for classification.
      *
+     * @param data the dataset
+     * @param ntrees the number of trees.
+     * @param mtry the number of random selected features to be used to determine
+     * the decision at a node of the tree. floor(sqrt(dim)) seems to give
+     * generally good performance, where dim is the number of variables.
+     * @param nodeSize the minimum size of leaf nodes.
+     * @param maxNodes the maximum number of leaf nodes in the tree.
+     * @param subsample the sampling rate for training tree. 1.0 means sampling with replacement. < 1.0 means
+     *                  sampling without replacement.
+     * @param rule Decision tree split rule.
+     */
+    public RandomForest(AttributeDataset data, int ntrees, int maxNodes, int nodeSize, int mtry, double subsample, DecisionTree.SplitRule rule) {
+        this(data.attributes(), data.x(), data.labels(), ntrees, maxNodes, nodeSize, mtry, subsample, rule);
+    }
+
+    /**
+     * Constructor. Learns a random forest for classification.
+     *
      * @param attributes the attribute properties.
      * @param x the training instances.
      * @param y the response variable.
@@ -502,6 +551,31 @@ public class RandomForest implements SoftClassifier<double[]>, Serializable {
      */
     public RandomForest(Attribute[] attributes, double[][] x, int[] y, int ntrees, int maxNodes, int nodeSize, int mtry, double subsample, DecisionTree.SplitRule rule) {
         this(attributes, x, y, ntrees, maxNodes, nodeSize, mtry, subsample, rule, null);
+    }
+
+    /**
+     * Constructor. Learns a random forest for classification.
+     *
+     * @param data the dataset
+     * @param ntrees the number of trees.
+     * @param mtry the number of random selected features to be used to determine
+     * the decision at a node of the tree. floor(sqrt(dim)) seems to give
+     * generally good performance, where dim is the number of variables.
+     * @param nodeSize the minimum size of leaf nodes.
+     * @param maxNodes the maximum number of leaf nodes in the tree.
+     * @param subsample the sampling rate for training tree. 1.0 means sampling with replacement. < 1.0 means
+     *                  sampling without replacement.
+     * @param rule Decision tree split rule.
+     * @param classWeight Priors of the classes. The weight of each class
+     *                    is roughly the ratio of samples in each class.
+     *                    For example, if
+     *                    there are 400 positive samples and 100 negative
+     *                    samples, the classWeight should be [1, 4]
+     *                    (assuming label 0 is of negative, label 1 is of
+     *                    positive).
+     */
+    public RandomForest(AttributeDataset data, int ntrees, int maxNodes, int nodeSize, int mtry, double subsample, DecisionTree.SplitRule rule, int[] classWeight) {
+        this(data.attributes(), data.x(), data.labels(), ntrees, maxNodes, nodeSize, mtry, subsample, rule, classWeight);
     }
 
     /**
@@ -562,7 +636,7 @@ public class RandomForest implements SoftClassifier<double[]>, Serializable {
             }
             
             if (i > 0 && labels[i] - labels[i-1] > 1) {
-                throw new IllegalArgumentException("Missing class: " + labels[i]+1);                 
+                throw new IllegalArgumentException("Missing class: " + (labels[i-1]+1));
             }
         }
 
